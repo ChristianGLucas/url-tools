@@ -124,6 +124,41 @@ mod tests {
         assert_eq!(out.registrable_domain, "");
     }
 
+    // Independent oracle: an IP address is, by definition (RFC 791 / RFC
+    // 4291), not a domain name — the Public Suffix List concept does not
+    // apply to it at all, so the correct answer is empty/unknown, never a
+    // dotted-octet treated as a domain label.
+    #[test]
+    fn test_ipv4_host_is_not_a_domain() {
+        let ax = test_context();
+        let out = registrable_domain(&ax, ui("http://192.168.1.1/")).unwrap();
+        assert_eq!(out.error, "");
+        assert_eq!(out.registrable_domain, "");
+        assert_eq!(out.suffix, "");
+        assert!(!out.is_known);
+        assert!(!out.is_icann);
+    }
+
+    #[test]
+    fn test_ipv4_bare_host_is_not_a_domain() {
+        let ax = test_context();
+        let out = registrable_domain(&ax, ui("8.8.8.8")).unwrap();
+        assert_eq!(out.error, "");
+        assert_eq!(out.registrable_domain, "");
+        assert_eq!(out.suffix, "");
+        assert!(!out.is_known);
+    }
+
+    #[test]
+    fn test_ipv6_host_is_not_a_domain() {
+        let ax = test_context();
+        let out = registrable_domain(&ax, ui("http://[2001:db8::1]/")).unwrap();
+        assert_eq!(out.error, "");
+        assert_eq!(out.registrable_domain, "");
+        assert_eq!(out.suffix, "");
+        assert!(!out.is_known);
+    }
+
     #[test]
     fn test_empty_input_is_structured_error() {
         let ax = test_context();
