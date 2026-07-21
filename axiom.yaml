@@ -1,0 +1,57 @@
+name: christiangeorgelucas/url-tools
+version: 0.1.0
+language: rust
+description: Composable Axiom URL parsing & manipulation nodes wrapping the WHATWG-URL-Standard-compliant servo/rust-url crate (the reference parser browsers converge on), its sibling idna and percent-encoding crates, and the psl crate (Mozilla Public Suffix List, compiled offline). Parse a URL into components, normalize/canonicalize, resolve a relative reference against a base (join), get/add/set/remove query parameters, percent-encode/decode, IDNA/punycode encode and decode internationalized domains, validate, and extract the registrable domain (eTLD+1) / public suffix. Every node is pure string-in/string-out — no URL is ever fetched or dereferenced. Deterministic and offline.
+nodes:
+- name: ParseUrl
+  input: UrlInput
+  output: UrlComponents
+  description: 'Parse a URL string into its full WHATWG breakdown — scheme, username/password, host (with detected kind: domain/ipv4/ipv6), explicit and effective port, path and path segments, raw query string plus parsed key/value pairs, fragment, serialized origin, and the cannot-be-a-base flag — plus the re-serialized, normalized URL itself. Input is bounded to 8192 bytes. Malformed input returns a structured error (EMPTY_URL, INPUT_TOO_LARGE, PARSE_ERROR) with every other field at its zero value, never a crash.'
+- name: NormalizeUrl
+  input: UrlInput
+  output: UrlResult
+  description: Canonicalize a URL string via the WHATWG URL parsing and serialization algorithm — lowercases the scheme and domain host, IDNA/punycode-encodes an internationalized domain, percent-encodes each component per its WHATWG encode set, resolves "." and ".." path segments, and omits a port that matches the scheme's default. Returns just the normalized URL string (use ParseUrl for the full component breakdown). Malformed input returns a structured error.
+- name: JoinUrl
+  input: JoinInput
+  output: UrlResult
+  description: Resolve a (possibly relative) reference against an absolute base URL, per the WHATWG URL relative-resolution algorithm — exactly how a browser resolves an <a href> against the current page or a Location header against the request URL. Handles relative paths ("../x", "./x"), absolute paths ("/x"), query-only and fragment-only references ("?x=1", "#frag"), protocol-relative references ("//other.example/x"), and an already-absolute reference (returned normalized, ignoring the base). Malformed base or unresolvable reference returns a structured error.
+- name: GetQueryParams
+  input: UrlInput
+  output: QueryParams
+  description: Extract every query-string key/value pair from a URL, in original order, with application/x-www-form-urlencoded decoding applied (percent-decoding plus '+' as space). A repeated key (e.g. "?a=1&a=2") yields two separate entries, not a merged list. Malformed input returns a structured error.
+- name: AddQueryParam
+  input: QueryParamInput
+  output: UrlResult
+  description: Append a query parameter to a URL, always adding a new "key=value" pair even if the key already exists (use SetQueryParam to replace instead). The key and value are percent-encoded per the WHATWG query encode set. Returns the resulting URL string. Malformed input returns a structured error.
+- name: SetQueryParam
+  input: QueryParamInput
+  output: UrlResult
+  description: Set a query parameter on a URL, first removing every existing occurrence of the key and then appending exactly one "key=value" pair (use AddQueryParam to append without removing duplicates). Returns the resulting URL string. Malformed input returns a structured error.
+- name: RemoveQueryParam
+  input: RemoveQueryParamInput
+  output: UrlResult
+  description: Remove every query-string pair matching a given key from a URL, leaving other parameters (including other keys and any duplicate-key entries that don't match) untouched, in their original order. Returns the resulting URL string. Malformed input returns a structured error.
+- name: PercentEncode
+  input: PercentEncodeInput
+  output: TextResult
+  description: Percent-encode a text value for safe inclusion in a URL, using the real WHATWG encode set for the requested context, each produced by the actual url crate component setter (not a hand-rolled table) — "userinfo" and "fragment" have no substructure so the whole value is encoded as-is; "path" and "query" treat the value as a WHOLE path/query so '/' and '&'/'=' respectively are left un-escaped, and "path" results always begin with '/' (use "component" for a single segment/value that may itself contain those characters); "component" (default) is a generic, maximally-conservative set covering every byte except ASCII letters/digits/"-_.~", via percent_encoding::NON_ALPHANUMERIC. Malformed input returns a structured error.
+- name: PercentDecode
+  input: TextInput
+  output: TextResult
+  description: Percent-decode a text value (reverse of PercentEncode) and validate the result as UTF-8. Bytes with no percent-escape pass through unchanged. Input that decodes to invalid UTF-8 returns a structured error (INVALID_UTF8) rather than silently lossy-substituting replacement characters.
+- name: IdnaEncode
+  input: IdnaInput
+  output: TextResult
+  description: Convert an internationalized (Unicode) domain name to its ASCII-compatible punycode form (IDNA ToASCII, e.g. "münchen.de" to "xn--mnchen-3ya.de"), using the same idna crate the url crate uses internally for host processing. An already-ASCII domain is validated and returned normalized (lowercased). Uses the WHATWG-default, lenient ToASCII processing (no STD3/length enforcement) — the one clear error case is a label already prefixed "xn--" whose punycode does not decode, which returns a structured error.
+- name: IdnaDecode
+  input: IdnaInput
+  output: TextResult
+  description: Convert a punycode/ASCII-compatible domain name back to its Unicode form (IDNA ToUnicode, e.g. "xn--mnchen-3ya.de" to "münchen.de"), using the same idna crate the url crate uses internally for host processing. A domain with no punycode labels is returned unchanged. Malformed punycode returns a structured error.
+- name: ValidateUrl
+  input: UrlInput
+  output: ValidationResult
+  description: Validate a URL string against the WHATWG URL parsing algorithm without requiring the caller to handle a full component breakdown. Returns valid=true plus the normalized URL on success, or valid=false plus a structured error token on failure. Never throws — an invalid URL is a normal (valid=false) result, not an error path fault.
+- name: RegistrableDomain
+  input: UrlInput
+  output: RegistrableDomainResult
+  description: Extract the registrable domain (eTLD+1, e.g. "example.co.uk" from "www.example.co.uk") and public suffix (e.g. "co.uk") from a URL or bare hostname, using the Mozilla Public Suffix List compiled offline into the psl crate at build time (no runtime list fetch). Reports whether the matched suffix is an ICANN (delegated TLD) or private-section entry, and whether the host has any recognized public suffix at all. Accepts a full URL (the host is extracted) or a bare domain string. Malformed input returns a structured error.

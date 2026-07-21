@@ -1,0 +1,246 @@
+// Data contracts for christiangeorgelucas/url-tools.
+//
+// Leading comments (no blank line before the declaration) become registry
+// documentation. proto3 omits default scalars (0, false, "") from the JSON
+// the HTTP bridge emits, so a consumer must treat a missing `error` as
+// success and a missing field as its zero value.
+//
+// Every node here wraps the WHATWG-URL-Standard-compliant `url` crate
+// (servo/rust-url — the reference parser browsers converge on), plus its
+// sibling `idna` and `percent-encoding` crates, and the `psl` crate (Mozilla
+// Public Suffix List, compiled to native code — no runtime network fetch).
+// Nodes are pure string-in/string-out: no URL is ever fetched or dereferenced.
+
+syntax = "proto3";
+
+package christiangeorgelucas.url_tools;
+
+// ── Shared shapes ───────────────────────────────────────────────────────────
+
+// A single query-string key/value pair, order-preserving and duplicate-
+// preserving (a key may legally repeat, e.g. "?a=1&a=2").
+message QueryParam {
+  // The decoded (percent-decoded, plus-as-space per application/x-www-form-
+  // urlencoded) parameter name.
+  string key = 1;
+  // The decoded parameter value.
+  string value = 2;
+}
+
+// A single URL string, taken as input by most nodes. Bounded to 8192 bytes
+// (a generous superset of practical URL length limits) before any parsing
+// is attempted.
+message UrlInput {
+  // The URL to operate on, e.g. "https://user@example.com:8443/a/b?x=1#f".
+  string url = 1;
+}
+
+// A single arbitrary text string, taken as input by percent-encode/decode
+// nodes. Bounded to 65536 bytes before any processing is attempted.
+message TextInput {
+  // The text to encode or decode. Not required to be a full URL — any
+  // string component (a path segment, a header value, etc.) is valid input.
+  string value = 1;
+}
+
+// The full breakdown of a URL into its WHATWG components. On a parse failure
+// every field is at its zero value except `error`.
+message UrlComponents {
+  // The re-serialized, normalized URL (lowercased scheme/host, default
+  // ports omitted, "." / ".." path segments resolved, etc. — exactly the
+  // WHATWG URL serialization algorithm's output).
+  string url = 1;
+  // The scheme, lowercased, without the trailing ':' (e.g. "https").
+  string scheme = 2;
+  // The username, percent-decoded is NOT applied (kept in its wire/percent-
+  // encoded form, matching the URL Standard's userinfo serialization).
+  string username = 3;
+  // The password (percent-encoded form); empty if none was present.
+  string password = 4;
+  // True iff the URL carries a password component at all (distinguishes
+  // "no password" from "empty password").
+  bool has_password = 5;
+  // The host, in its serialized form: a lowercased/punycode-encoded domain,
+  // a canonical IPv4 dotted-quad, or a bracketed IPv6 literal. Empty for
+  // schemes with no host (e.g. "mailto:").
+  string host = 6;
+  // The kind of host: "domain", "ipv4", "ipv6", or "" (no host).
+  string host_type = 7;
+  // True iff the URL explicitly specifies a port (as opposed to using the
+  // scheme's default).
+  bool has_port = 8;
+  // The explicit port, only meaningful when has_port is true.
+  uint32 port = 9;
+  // The effective port: the explicit port if given, else the scheme's
+  // well-known default (80/http, 443/https, 21/ftp, ...), else 0 if the
+  // scheme has no known default.
+  uint32 effective_port = 10;
+  // The path, percent-encoded per the WHATWG path percent-encode set,
+  // always starting with '/' for a URL that has an authority.
+  string path = 11;
+  // The path split into its '/'-separated segments (no empty leading
+  // segment; each segment keeps its percent-encoding).
+  repeated string path_segments = 12;
+  // The raw query string, without the leading '?'. Empty string when absent.
+  string query = 13;
+  // True iff the URL carries a '?' at all (distinguishes "no query" from
+  // "empty query").
+  bool has_query = 14;
+  // The query string parsed into key/value pairs (application/x-www-form-
+  // urlencoded rules: '&'-separated, '+' decodes to space).
+  repeated QueryParam query_pairs = 15;
+  // The fragment, without the leading '#'. Empty string when absent.
+  string fragment = 16;
+  // True iff the URL carries a '#' at all.
+  bool has_fragment = 17;
+  // The serialized tuple origin (scheme://host:port), or the literal string
+  // "null" for a URL whose origin is opaque (e.g. "data:", "file:", or a
+  // cannot-be-a-base URL).
+  string origin = 18;
+  // True for a "cannot-be-a-base" URL (e.g. "mailto:a@b.com",
+  // "data:text/plain,hi") — a URL with no hierarchical path/authority.
+  bool cannot_be_a_base = 19;
+  // Stable error token on failure (EMPTY_URL, INPUT_TOO_LARGE, PARSE_ERROR);
+  // empty on success.
+  string error = 20;
+}
+
+// The result of an operation that produces a single URL string.
+message UrlResult {
+  // The resulting URL, re-serialized and normalized. Empty on error.
+  string url = 1;
+  // Stable error token on failure; empty on success.
+  string error = 2;
+}
+
+// The result of an operation that produces a single text string.
+message TextResult {
+  // The resulting text. Empty on error.
+  string value = 1;
+  // Stable error token on failure; empty on success.
+  string error = 2;
+}
+
+// ── Join ─────────────────────────────────────────────────────────────────
+
+// Input for the Join node: resolve a (possibly relative) reference against
+// a base URL, per the WHATWG URL parsing algorithm's relative-resolution
+// rules (identical to how a browser resolves an <a href> against the
+// current page, or a Location header against the request URL).
+message JoinInput {
+  // The absolute base URL. Must itself parse successfully.
+  string base = 1;
+  // The reference to resolve — may be absolute (returned as-is, normalized)
+  // or relative (resolved against `base`: "../x", "/x", "?x=1", "#frag",
+  // "//other.example/x", etc.).
+  string relative = 2;
+}
+
+// ── Query-parameter manipulation ────────────────────────────────────────────
+
+// Input for AddQueryParam / SetQueryParam: a URL plus a key/value pair.
+message QueryParamInput {
+  // The URL to modify. Must parse successfully.
+  string url = 1;
+  // The (undecoded, plain) parameter name.
+  string key = 2;
+  // The (undecoded, plain) parameter value.
+  string value = 3;
+}
+
+// Input for RemoveQueryParam: a URL plus a key to strip.
+message RemoveQueryParamInput {
+  // The URL to modify. Must parse successfully.
+  string url = 1;
+  // Every query pair with this key is removed (all occurrences).
+  string key = 2;
+}
+
+// Every query-string key/value pair extracted from a URL, in original order.
+message QueryParams {
+  // The pairs, in the order they appear in the query string. A repeated key
+  // (e.g. "?a=1&a=2") appears as two separate entries.
+  repeated QueryParam pairs = 1;
+  // Stable error token on failure; empty on success.
+  string error = 2;
+}
+
+// ── Percent-encoding ─────────────────────────────────────────────────────
+
+// Input for PercentEncode: a text value plus which WHATWG percent-encode
+// set / URL component context to encode it for. Each named mode is
+// produced by the real `url` crate component setter for that context — not
+// a hand-rolled encode table — so the exact bytes encoded match what
+// constructing a real URL with that value would produce.
+message PercentEncodeInput {
+  // The text to encode.
+  string value = 1;
+  // Which encode set / context to use:
+  //  - "userinfo": the URL username percent-encode set (via Url::set_username).
+  //    No substructure, so the whole value is encoded as-is.
+  //  - "fragment": the URL fragment percent-encode set (via Url::set_fragment).
+  //    No substructure, so the whole value is encoded as-is.
+  //  - "path": the URL path percent-encode set (via Url::set_path). The
+  //    value is treated as a WHOLE path, so '/' is a segment separator and
+  //    is left un-escaped, and the result always begins with '/' (added if
+  //    the input lacks one) — encode a single path segment with
+  //    "component" instead if the value itself may contain '/'.
+  //  - "query": the URL query percent-encode set (via Url::set_query). The
+  //    value is treated as a WHOLE raw query string, so '&' and '=' are
+  //    left un-escaped — encode a single query value with "component"
+  //    instead if the value itself may contain '&' or '='.
+  //  - "component" (default when empty): a generic, maximally-conservative
+  //    set — every byte except ASCII letters, digits, and "-_.~" — via
+  //    percent_encoding::NON_ALPHANUMERIC. Safe for embedding an arbitrary
+  //    value as a single path segment or a single query key/value with no
+  //    separator ambiguity.
+  string component = 2;
+}
+
+// ── IDNA / punycode ──────────────────────────────────────────────────────
+
+// Input for IdnaEncode / IdnaDecode: a domain name (Unicode or ASCII/
+// punycode form).
+message IdnaInput {
+  // The domain to convert, e.g. "münchen.de" (IdnaEncode) or
+  // "xn--mnchen-3ya.de" (IdnaDecode).
+  string domain = 1;
+}
+
+// ── Validation ───────────────────────────────────────────────────────────
+
+// The result of validating a URL string against the WHATWG URL parsing
+// algorithm.
+message ValidationResult {
+  // True iff the input parses as a valid absolute URL.
+  bool valid = 1;
+  // The normalized, re-serialized URL when valid; empty when invalid.
+  string url = 2;
+  // Stable error token when invalid (EMPTY_URL, INPUT_TOO_LARGE,
+  // PARSE_ERROR); empty when valid.
+  string error = 3;
+}
+
+// ── Registrable domain / public suffix ──────────────────────────────────
+
+// The result of extracting the registrable domain (eTLD+1) and public
+// suffix from a host, using the Mozilla Public Suffix List (compiled into
+// the `psl` crate at build time — offline, no runtime list fetch).
+message RegistrableDomainResult {
+  // The registrable domain (public suffix plus one label), e.g.
+  // "example.co.uk" for host "www.example.co.uk". Empty if the host itself
+  // is a bare public suffix or the host could not be matched.
+  string registrable_domain = 1;
+  // The public suffix itself, e.g. "co.uk" for "www.example.co.uk".
+  string suffix = 2;
+  // True iff `suffix` comes from the ICANN section of the Public Suffix
+  // List (a "real" delegated TLD/suffix, as opposed to a privately
+  // registered domain acting as a suffix, e.g. "github.io").
+  bool is_icann = 3;
+  // True iff the input host has a recognized public suffix at all (false
+  // for, e.g., a bare IP literal, "localhost", or an unlisted suffix).
+  bool is_known = 4;
+  // Stable error token on failure (EMPTY_INPUT, INPUT_TOO_LARGE,
+  // PARSE_ERROR, NO_HOST); empty on success.
+  string error = 5;
+}

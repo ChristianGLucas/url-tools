@@ -1,0 +1,33 @@
+# Axiom package: christiangeorgelucas/url-tools
+[package]
+name = "service"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "service"
+path = "service.rs"
+
+[dependencies]
+tonic = "0.12"
+prost = "0.13"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "sync"] }
+tokio-stream = { version = "0.1", features = ["net"] }
+serde_json = "1"
+
+# URL stack — the WHATWG-URL-Standard-compliant servo/rust-url crate (the
+# reference parser browsers converge on) plus its own sibling crates for
+# IDNA/punycode and percent-encoding, and psl for the Mozilla Public Suffix
+# List (compiled to native code at psl's own build time — no runtime list
+# fetch, no network access from this package). Pinned for deterministic
+# builds. Every crate in the resolved tree is permissive (MIT/Apache-2.0
+# dual, except icu_normalizer/icu_properties under the permissive OSI-
+# approved Unicode-3.0 license) — verified against crates.io metadata; see
+# THIRD_PARTY_NOTICES.md.
+url = "=2.5.8"
+idna = "=1.1.0"
+percent-encoding = "=2.3.2"
+psl = "=2.1.219"
+
+[build-dependencies]
+tonic-build = "0.12"

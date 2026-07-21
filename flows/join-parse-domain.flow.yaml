@@ -1,0 +1,28 @@
+name: join-parse-domain
+description: Resolve a relative link against a base page URL, parse the result, then extract its registrable domain — a realistic three-node pipeline (e.g. allow-listing a link found on a crawled page). JoinUrl.url feeds ParseUrl.url; ParseUrl.host feeds RegistrableDomain.url (RegistrableDomain accepts a bare host as well as a full URL).
+
+# Run it (the start node — JoinUrl — takes its input via -d):
+#   axiom flow compile flows/join-parse-domain.flow.yaml
+#   axiom flow run <artifact-id> -d '{"base":"https://www.example.co.uk/articles/","relative":"../about"}'
+# Expect the final RegistrableDomain output: {"registrableDomain":"example.co.uk","suffix":"co.uk","isIcann":true,"isKnown":true}
+
+nodes:
+  - alias: joiner
+    package: christiangeorgelucas/url-tools@0.1.0
+    node: JoinUrl
+  - alias: parser
+    package: christiangeorgelucas/url-tools@0.1.0
+    node: ParseUrl
+  - alias: domain
+    package: christiangeorgelucas/url-tools@0.1.0
+    node: RegistrableDomain
+
+edges:
+  - from: joiner
+    to: parser
+    adapter:
+      "url": url
+  - from: parser
+    to: domain
+    adapter:
+      "host": url
