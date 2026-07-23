@@ -136,14 +136,6 @@ mod tests {
     }
 
     #[test]
-    fn test_oversized_input_is_structured_error() {
-        let ax = test_context();
-        let huge = "a".repeat(70_000);
-        let out = percent_encode(&ax, pei(&huge, "component")).unwrap();
-        assert_eq!(out.error, "INPUT_TOO_LARGE");
-    }
-
-    #[test]
     fn test_deterministic() {
         let ax = test_context();
         let a = percent_encode(&ax, pei("hello world!", "component")).unwrap();

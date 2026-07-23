@@ -107,14 +107,6 @@ mod tests {
         assert_eq!(out.value, "");
     }
 
-    #[test]
-    fn test_oversized_input_is_structured_error() {
-        let ax = test_context();
-        let huge = "a".repeat(70_000);
-        let out = percent_decode(&ax, ti(&huge)).unwrap();
-        assert_eq!(out.error, "INPUT_TOO_LARGE");
-    }
-
     // Round-trips with PercentEncode's "component" mode.
     #[test]
     fn test_round_trip_with_percent_encode_component_mode() {

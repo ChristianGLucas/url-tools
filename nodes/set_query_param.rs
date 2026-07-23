@@ -18,9 +18,6 @@ pub fn set_query_param(
     if input.key.is_empty() {
         return Ok(err("EMPTY_KEY"));
     }
-    if input.key.len() > urlutil::MAX_TEXT_LEN || input.value.len() > urlutil::MAX_TEXT_LEN {
-        return Ok(err("INPUT_TOO_LARGE"));
-    }
     let mut url = match urlutil::parse_bounded(&input.url) {
         Ok(u) => u,
         Err(e) => return Ok(err(e)),

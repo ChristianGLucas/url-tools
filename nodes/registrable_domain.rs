@@ -3,9 +3,6 @@ use crate::gen::messages::{ UrlInput, RegistrableDomainResult };
 use std::net::{ IpAddr, Ipv6Addr };
 use url::Url;
 
-#[path = "urlutil.rs"]
-mod urlutil;
-
 fn empty_result(error: &str) -> RegistrableDomainResult {
     RegistrableDomainResult {
         registrable_domain: String::new(),
@@ -49,9 +46,6 @@ pub fn registrable_domain(
     let raw = input.url.trim();
     if raw.is_empty() {
         return Ok(empty_result("EMPTY_INPUT"));
-    }
-    if raw.len() > urlutil::MAX_URL_LEN {
-        return Ok(empty_result("INPUT_TOO_LARGE"));
     }
 
     // Accept either a full URL (extract the host) or a bare hostname.

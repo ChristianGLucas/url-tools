@@ -2,9 +2,6 @@ use crate::axiom_context::AxiomContext;
 use crate::gen::messages::{ JoinInput, UrlResult };
 use url::Url;
 
-#[path = "urlutil.rs"]
-mod urlutil;
-
 /// Resolve a (possibly relative) reference against an absolute base URL,
 /// per the WHATWG URL relative-resolution algorithm — exactly how a browser
 /// resolves an `<a href>` against the current page or a Location header
@@ -23,9 +20,6 @@ pub fn join_url(
 
     if input.base.is_empty() {
         return Ok(err("EMPTY_BASE"));
-    }
-    if input.base.len() > urlutil::MAX_URL_LEN || input.relative.len() > urlutil::MAX_URL_LEN {
-        return Ok(err("INPUT_TOO_LARGE"));
     }
     let base = match Url::parse(&input.base) {
         Ok(u) => u,

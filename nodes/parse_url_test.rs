@@ -178,14 +178,6 @@ mod tests {
     }
 
     #[test]
-    fn test_oversized_url_is_structured_error() {
-        let ax = test_context();
-        let huge = format!("https://example.com/{}", "a".repeat(9000));
-        let out = parse_url(&ax, ui(&huge)).unwrap();
-        assert_eq!(out.error, "INPUT_TOO_LARGE");
-    }
-
-    #[test]
     fn test_deterministic() {
         let ax = test_context();
         let a = parse_url(&ax, ui("https://example.com/a?b=c")).unwrap();

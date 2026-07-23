@@ -3,9 +3,6 @@ use crate::gen::messages::{ PercentEncodeInput, TextResult };
 use percent_encoding::{ utf8_percent_encode, NON_ALPHANUMERIC };
 use url::Url;
 
-#[path = "urlutil.rs"]
-mod urlutil;
-
 /// Percent-encode a text value for safe inclusion in a URL, using the real
 /// WHATWG encode set for the requested context, each produced by the
 /// actual `url` crate component setter (not a hand-rolled table): so the
@@ -29,10 +26,6 @@ pub fn percent_encode(
 ) -> Result<TextResult, Box<dyn std::error::Error>> {
     let _ = ax;
     let err = |e: &str| TextResult { value: String::new(), error: e.to_string() };
-
-    if input.value.len() > urlutil::MAX_TEXT_LEN {
-        return Ok(err("INPUT_TOO_LARGE"));
-    }
 
     let component = if input.component.is_empty() {
         "component".to_string()

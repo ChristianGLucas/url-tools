@@ -9,8 +9,8 @@ mod urlutil;
 /// serialized origin, cannot-be-a-base) plus the re-serialized, normalized
 /// URL itself. Wraps the servo/rust-url crate — the WHATWG-URL-Standard
 /// reference parser. Malformed input returns a structured `error` token
-/// (EMPTY_URL, INPUT_TOO_LARGE, PARSE_ERROR) with every other field at its
-/// zero value, never a crash.
+/// (EMPTY_URL, PARSE_ERROR) with every other field at its zero value,
+/// never a crash.
 pub fn parse_url(
     ax: &dyn AxiomContext,
     input: UrlInput,

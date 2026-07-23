@@ -1,12 +1,12 @@
 name: christiangeorgelucas/url-tools
-version: 0.1.0
+version: 0.1.1
 language: rust
 description: Composable Axiom URL parsing & manipulation nodes wrapping the WHATWG-URL-Standard-compliant servo/rust-url crate (the reference parser browsers converge on), its sibling idna and percent-encoding crates, and the psl crate (Mozilla Public Suffix List, compiled offline). Parse a URL into components, normalize/canonicalize, resolve a relative reference against a base (join), get/add/set/remove query parameters, percent-encode/decode, IDNA/punycode encode and decode internationalized domains, validate, and extract the registrable domain (eTLD+1) / public suffix. Every node is pure string-in/string-out — no URL is ever fetched or dereferenced. Deterministic and offline.
 nodes:
 - name: ParseUrl
   input: UrlInput
   output: UrlComponents
-  description: 'Parse a URL string into its full WHATWG breakdown — scheme, username/password, host (with detected kind: domain/ipv4/ipv6), explicit and effective port, path and path segments, raw query string plus parsed key/value pairs, fragment, serialized origin, and the cannot-be-a-base flag — plus the re-serialized, normalized URL itself. Input is bounded to 8192 bytes. Malformed input returns a structured error (EMPTY_URL, INPUT_TOO_LARGE, PARSE_ERROR) with every other field at its zero value, never a crash.'
+  description: 'Parse a URL string into its full WHATWG breakdown — scheme, username/password, host (with detected kind: domain/ipv4/ipv6), explicit and effective port, path and path segments, raw query string plus parsed key/value pairs, fragment, serialized origin, and the cannot-be-a-base flag — plus the re-serialized, normalized URL itself. Malformed input returns a structured error (EMPTY_URL, PARSE_ERROR) with every other field at its zero value, never a crash.'
 - name: NormalizeUrl
   input: UrlInput
   output: UrlResult

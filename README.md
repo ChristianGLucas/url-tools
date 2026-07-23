@@ -23,9 +23,9 @@ Suffix List (compiled offline at `psl`'s own build time).
 
 Every node is **stateless**, **offline**, and **deterministic** — pure
 string-in/string-out. **No node ever fetches, dereferences, or connects to a
-URL**; this package only parses and manipulates the string. Input is bounded
-(8 KiB for URLs, 64 KiB for arbitrary text/domain fields) before any parsing
-is attempted.
+URL**; this package only parses and manipulates the string. Size/resource
+guarding (input bounds, DoS/bomb protection) is the Axiom platform's
+concern, not this package's — every node here is a pure function.
 
 ## Nodes
 
@@ -63,8 +63,8 @@ that context — never a hand-rolled encode table:
 ## Error contract
 
 Malformed input never crashes a node — it returns a stable, machine-readable
-`error` token with empty result fields: `EMPTY_URL`, `INPUT_TOO_LARGE`,
-`PARSE_ERROR`, `BASE_PARSE_ERROR`, `REFERENCE_PARSE_ERROR`, `EMPTY_KEY`,
+`error` token with empty result fields: `EMPTY_URL`, `PARSE_ERROR`,
+`BASE_PARSE_ERROR`, `REFERENCE_PARSE_ERROR`, `EMPTY_KEY`,
 `UNKNOWN_COMPONENT`, `ENCODE_ERROR`, `INVALID_UTF8`, `EMPTY_DOMAIN`,
 `IDNA_ERROR`, `EMPTY_INPUT`, `NO_HOST`. `ValidateUrl` is the one exception by
 design: an invalid URL is a **normal** result (`valid=false`), not an error
